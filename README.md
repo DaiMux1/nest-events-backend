@@ -28,6 +28,10 @@
 
 ## Installation
 
+node v.14.15.1
+nest cli 7.5.4
+
+
 ```bash
 $ npm install
 ```
