@@ -1,54 +1,78 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  ParseIntPipeOptions,
+  Patch,
+  Post,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { CreateEventDto } from './create-event.dto';
 import { Event } from './event.entity';
 import { UpdateEventDto } from './update-event.dto';
 
 @Controller('events')
 export class EventsController {
-    private events: Event[] = [];
+  constructor(
+    @InjectRepository(Event)
+    private readonly repository: Repository<Event>,
+  ) {}
 
-    @Get()
-    findAll() {
-        // return [
-        //     {id: 1, number: 1},
-        //     {id: 2, number: 2},
-        // ]
-        return this.events;
-    }
+  @Get()
+  async findAll() {
+    // return [
+    //     {id: 1, number: 1},
+    //     {id: 2, number: 2},
+    // ]
+    return await this.repository.find();
+  }
 
-    @Get(":id/:name")
-    findOne(@Param("id") id,@Param("name") name) {
-        const event = this.events.find(e => e.id === parseInt(id))
-        // if (event)
-        return event;
-    }
-    @Post()
-    create(@Body() input: CreateEventDto) {
-        const event = {
-            ...input,
-            when: new Date(input.when),
-            id: this.events.length + 1
-        }
-        this.events.push(event)
-        return event;
-    }
-    @Patch(":id")
-    update(@Param("id") id, @Body() input: UpdateEventDto) {
-        const index = this.events.findIndex(e => e.id === parseInt(id))
+  @Get('/practice')
+  async practice() {
+    return await this.repository.find({ where: { id: MoreThan(3) } });
+  }
 
-        this.events[index] = {
-            ...this.events[index],
-            ...input,
-            when: input.when ? new Date(input.when) : this.events[index].when
-        }
+  @Get('/:id')
+  async findOne(
+    @Param('id', ParseIntPipe)
+    id,
+  ) {
+    console.log(typeof id);
 
-        return this.events[index]
-    }
+    return await this.repository.findOne(id);
+  }
 
-    @Delete(":id")
-    @HttpCode(204)
-    remove(@Param("id") id) {
-        this.events = this.events.filter(e => e.id !== parseInt(id))
+  @UsePipes()
+  @Post()
+  async create(@Body() input: CreateEventDto) {
+    return await this.repository.save({
+      ...input,
+      when: new Date(input.when),
+    });
+  }
+  
+  @Patch(':id')
+  async update(@Param('id') id, @Body() input: UpdateEventDto) {
+    const event = await this.repository.findOne(id);
 
-    }
+    return await this.repository.save({
+      ...event,
+      ...input,
+      when: input.when ? new Date(input.when) : event.when,
+    });
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@Param('id') id) {
+    await this.repository.delete(id);
+  }
 }
